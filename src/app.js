@@ -1,123 +1,90 @@
 /**
- * app.js — Application orchestrator for VolunteerMatch.
- * Wires state management, event handlers, and rendering together.
- * Imports from all other src/ modules; exports nothing.
+ * app.js — Platform bootstrap for VolunteerMatch.
+ *
+ * Responsibilities:
+ *   1. Initialise the store (seeds from sample data on first load).
+ *   2. Register all routes with the router.
+ *   3. Mount the navigation component into sidebar + bottom bar.
+ *   4. Start the router (handles the current hash and subsequent changes).
+ *
+ * All imports use explicit .js extensions (required for native ES modules).
+ *
+ * @module app
  */
 
-import { getSampleVolunteers, getSampleTasks, SKILLS } from './data.js';
-import { rankVolunteers, countUnfilledRoles } from './matcher.js';
-import { saveState, loadState, clearState } from './storage.js';
-import { renderRoster, renderTaskForm, renderResults } from './ui.js';
-import { AI_ENABLED, extractSkills } from './ai.js';
+import { store } from './store.js';
+import { auth } from './auth.js';
+import { router } from './router.js';
+import mountNav from './components/nav.js';
 
+// ── View imports ────────────────────────────────────────────────────────────
+import renderLanding          from './views/landing.js';
+import renderAuth             from './views/auth.js';
+import renderFeed             from './views/feed.js';
+import renderOpportunities    from './views/opportunities.js';
+import renderOpportunityDetail from './views/opportunity-detail.js';
+import renderProfile          from './views/profile.js';
+import renderOrganisations    from './views/organisations.js';
+import renderDonations        from './views/donations.js';
+import renderBloodDonation    from './views/blood-donation.js';
+import renderSettings         from './views/settings.js';
+
+/**
+ * Register all application routes.
+ * Order matters: more specific patterns before wildcards.
+ */
+function registerRoutes() {
+  router.register('/landing',           renderLanding);
+  router.register('/auth',              renderAuth);
+  router.register('/feed',              renderFeed);
+  router.register('/opportunities',     renderOpportunities);
+  router.register('/opportunities/:id', renderOpportunityDetail);
+  router.register('/profile/:username', renderProfile);
+  router.register('/organisations',     renderOrganisations);
+  router.register('/donations',         renderDonations);
+  router.register('/blood-donation',    renderBloodDonation);
+  router.register('/settings',          renderSettings);
+}
+
+/**
+ * Ensure the mobile bottom bar element exists in the DOM.
+ * app.js creates it dynamically so that index.html stays minimal.
+ *
+ * @returns {HTMLElement}
+ */
+function ensureBottomBar() {
+  let bar = document.getElementById('bottom-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'bottom-bar';
+    bar.className = 'vm-bottom-bar';
+    bar.setAttribute('role', 'navigation');
+    bar.setAttribute('aria-label', 'Mobile navigation');
+    document.body.appendChild(bar);
+  }
+  return bar;
+}
+
+/**
+ * Bootstrap function — called once the DOM is ready.
+ */
 function initApp() {
-  const saved = loadState();
-  const state = saved || {
-    volunteers: getSampleVolunteers(),
-    tasks: getSampleTasks(),
-    currentTask: null,
-    results: [],
-  };
+  // The store self-initialises in its constructor (loads from localStorage
+  // or seeds from sample data). No explicit seeding needed here.
 
-  const rosterContainer = document.getElementById('roster-list');
-  const formContainer = document.getElementById('task-form-container');
-  const resultsContainer = document.getElementById('results-container');
+  // Register all routes before starting the router.
+  registerRoutes();
 
-  /** Full re-render: rebuilds all panels from current state. */
-  function rerender() {
-    renderRoster(state.volunteers, state.tasks, rosterContainer);
-    renderTaskForm(SKILLS, handleSubmit, formContainer, AI_ENABLED, handleExtract);
-    if (state.currentTask && state.results.length > 0) {
-      const unfilledCount = countUnfilledRoles(state.results, state.currentTask);
-      renderResults(state.results, state.currentTask, unfilledCount, handleAssign, resultsContainer);
-    } else {
-      renderResults([], null, 0, handleAssign, resultsContainer);
-    }
+  // Mount navigation into sidebar and bottom bar.
+  const sidebarEl   = document.getElementById('sidebar');
+  const bottomBarEl = ensureBottomBar();
+
+  if (sidebarEl) {
+    mountNav(sidebarEl, bottomBarEl);
   }
 
-  /**
-   * Called when the task form is submitted with valid data.
-   * Creates a new task, ranks volunteers, and renders results.
-   *
-   * @param {{ name: string, description: string, requiredSkills: string[], slot: object, volunteersNeeded: number }} taskData
-   */
-  function handleSubmit(taskData) {
-    const newTask = {
-      id: 't' + Date.now(),
-      ...taskData,
-      assignedVolunteers: [],
-    };
-
-    // Don't add to state.tasks yet — only add when someone is assigned
-    state.currentTask = newTask;
-    state.results = rankVolunteers(state.volunteers, newTask, state.tasks);
-
-    const unfilledCount = countUnfilledRoles(state.results, newTask);
-    renderRoster(state.volunteers, state.tasks, rosterContainer);
-    renderResults(state.results, state.currentTask, unfilledCount, handleAssign, resultsContainer);
-    saveState(state);
-  }
-
-  /**
-   * Called when the organiser clicks "Assign" on a volunteer result card.
-   *
-   * @param {string} volunteerId
-   */
-  function handleAssign(volunteerId) {
-    const volunteer = state.volunteers.find(v => v.id === volunteerId);
-    const task = state.currentTask;
-    if (!volunteer || !task) return;
-
-    // Add task to state.tasks if not already there
-    if (!state.tasks.find(t => t.id === task.id)) {
-      state.tasks.push(task);
-    }
-
-    // Guard against duplicate or conflict (belt-and-suspenders)
-    if (volunteer.assignments.includes(task.id)) return;
-
-    // Assign volunteer to task
-    task.assignedVolunteers.push(volunteerId);
-    volunteer.assignments.push(task.id);
-
-    // Re-rank with updated state
-    state.results = rankVolunteers(state.volunteers, task, state.tasks);
-
-    saveState(state);
-    rerender();
-
-    // Re-render results panel with the latest unfilled count
-    const unfilledCount = countUnfilledRoles(state.results, task);
-    renderResults(state.results, task, unfilledCount, handleAssign, resultsContainer);
-  }
-
-  /**
-   * Calls the AI extractor and checks the matching skill checkboxes in the form.
-   *
-   * @param {string} description
-   */
-  async function handleExtract(description) {
-    const result = await extractSkills(description, SKILLS);
-    if (result.source === 'ai' && result.skills.length > 0) {
-      const checkboxes = document.querySelectorAll('input[name="skills"]');
-      checkboxes.forEach(cb => {
-        cb.checked = result.skills.includes(cb.value);
-      });
-    }
-  }
-
-  // Reset Demo button
-  document.getElementById('reset-btn').addEventListener('click', () => {
-    clearState();
-    state.volunteers = getSampleVolunteers();
-    state.tasks = getSampleTasks();
-    state.currentTask = null;
-    state.results = [];
-    rerender();
-  });
-
-  // Initial render
-  rerender();
+  // Start the router: handles the current hash and listens for hashchange.
+  router.start();
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
