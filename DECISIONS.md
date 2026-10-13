@@ -44,10 +44,43 @@
 **Decision:** Slots stored as ISO-8601 datetime strings (`"2026-10-17T09:00"`).
 **Reason:** Enables simple numeric comparison (`Date.parse`) for overlap detection without a date library.
 
+## ADR-010 Multi-view SPA with hash router
+**Decision:** Client-side hash-based routing (`#/route`) via a hand-rolled `src/router.js`.
+**Reason:** No build step; works with any static file server; no server-side routing needed; hash URLs work from `file://` too.
+**Tradeoff:** No server-side rendering, no SEO. Acceptable for a demo/MVP. Clean URLs would need a server rewrite rule.
+
+## ADR-011 AppStore singleton
+**Decision:** Single `store.js` singleton replaces per-module `localStorage` calls.
+**Reason:** All views and components share one consistent state object; mutations trigger subscribers; persist is centralised.
+**Tradeoff:** No immutability guarantees (plain JS objects). Fine at prototype scale; a real app would use a proper state management pattern.
+
+## ADR-012 Demo auth vs Firebase Auth
+**Decision:** Auth is simulated with localStorage sessions. Passwords stored as `DEMO_HASH_<username>` — clearly labelled, never a real hash.
+**Reason:** Firebase requires a project ID and network access; keeps the demo fully offline.
+**Migration path to Firebase Auth:**
+1. Add Firebase SDK via CDN (`<script type="module">` import).
+2. Replace `auth.signup/login/logout` with `createUserWithEmailAndPassword / signInWithEmailAndPassword / signOut`.
+3. Replace `vm_session` localStorage token with Firebase's `onAuthStateChanged` listener.
+4. Move user profile data to Firestore `users/{uid}`.
+5. Update `store.js` to hydrate from Firestore instead of localStorage.
+**Security note:** Never store real passwords in localStorage or Firestore.
+
+## ADR-013 Dark theme design token approach
+**Decision:** All colours defined as CSS custom properties on `:root`; no hardcoded colour values anywhere else.
+**Reason:** Single-source theming; easy to adjust palette; consistent across all components.
+**Tokens:** Defined in `style.css` `:root` block and documented in `.kiro/steering/tech.md`.
+
+## ADR-014 Matcher.js preserved unchanged
+**Decision:** The original `matcher.js` and its 28 passing tests are not modified.
+**Reason:** It is the proven core of the product. Platform views adapt their data to the matcher's Volunteer/Task shapes rather than changing the engine.
+**Integration:** `opportunity-detail.js` converts User objects → Volunteer shape and Opportunity → Task shape before calling `rankVolunteers()`.
+
 ## Future Work
 - Skill taxonomy editor (add/remove skill tags)
-- Multi-organiser support with simple auth
+- Real Firebase backend (see ADR-012 migration path)
 - Export assignments to CSV
 - Email confirmation hooks
 - Full AI provider abstraction (OpenAI, Anthropic, Bedrock)
-- Mobile-optimised layout
+- Payment provider integration (Stripe, Paystack)
+- Advanced admin panel with audit log
+- File uploads for org verification documents (Firebase Storage)
