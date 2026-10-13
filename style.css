@@ -917,3 +917,468 @@ a:hover {
     width: auto;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   LANDING PAGE
+   ═══════════════════════════════════════════════════════ */
+
+.vm-landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3rem;
+  padding: 2rem 1rem 4rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.vm-landing__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2rem 0;
+}
+
+.vm-landing__hero-icon {
+  font-size: 3.5rem;
+}
+
+.vm-landing__title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.vm-landing__tagline {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.vm-landing__description {
+  color: var(--text-muted);
+  max-width: 30rem;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.vm-landing__cta-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.vm-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.vm-feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+}
+
+.vm-feature-icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.vm-feature-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.4rem;
+}
+
+.vm-feature-body {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.vm-landing__stats {
+  text-align: center;
+}
+
+.vm-landing__stats-text {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.vm-landing__footer {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* ═══════════════════════════════════════════════════════
+   AUTH VIEW
+   ═══════════════════════════════════════════════════════ */
+
+.vm-auth__wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  padding: 2rem 1rem;
+}
+
+.vm-auth__card {
+  width: 100%;
+  max-width: 26rem;
+}
+
+.vm-auth__heading {
+  font-size: 1.35rem;
+  font-weight: 800;
+  text-align: center;
+  color: var(--text-main);
+  margin-bottom: 1.25rem;
+}
+
+.vm-auth__tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+
+.vm-auth__tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.vm-auth__tab:hover {
+  color: var(--text-main);
+}
+
+.vm-auth__tab[aria-selected="true"],
+.vm-auth__tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.vm-auth__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.vm-auth__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.vm-auth__hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.vm-auth__back {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+
+.vm-auth__back a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.vm-auth__back a:hover {
+  color: var(--accent);
+}
+
+.vm-input {
+  width: 100%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-main);
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.vm-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+textarea.vm-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   PROFILE VIEW
+   ═══════════════════════════════════════════════════════ */
+
+.vm-profile__card {
+  max-width: 700px;
+  margin: 1.5rem auto;
+}
+
+.vm-profile__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.vm-profile__header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.vm-avatar--lg {
+  width: 72px;
+  height: 72px;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.vm-profile__name {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.vm-profile__handle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.vm-profile__location {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-top: 0.2rem;
+}
+
+.vm-profile__edit-btn {
+  margin-left: auto;
+  align-self: flex-start;
+  white-space: nowrap;
+}
+
+.vm-profile__bio {
+  color: var(--text-muted);
+  margin: 0.75rem 0;
+  line-height: 1.55;
+}
+
+.vm-profile__stats {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.vm-profile__stat {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.vm-profile__stat--blood {
+  color: var(--danger);
+}
+
+.vm-profile__details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.vm-profile__field {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.vm-profile__label {
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 90px;
+  padding-top: 0.15rem;
+}
+
+.vm-profile__value {
+  flex: 1;
+}
+
+.vm-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.vm-text-muted {
+  color: var(--text-muted);
+}
+
+.vm-text-small {
+  font-size: 0.8rem;
+}
+
+.vm-profile__edit-heading {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--text-main);
+}
+
+.vm-profile__skills-fs {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+}
+
+.vm-profile__skills-fs legend {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.vm-profile__bd-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.vm-profile__btn-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SETTINGS VIEW
+   ═══════════════════════════════════════════════════════ */
+
+.vm-settings {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+
+.vm-settings__heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 1.5rem;
+}
+
+.vm-settings__section {
+  margin-bottom: 1.25rem;
+}
+
+.vm-settings__section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.75rem;
+}
+
+.vm-settings__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+  gap: 0.5rem;
+}
+
+.vm-settings__row:last-child {
+  border-bottom: none;
+}
+
+.vm-settings__label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.vm-settings__value {
+  font-size: 0.875rem;
+  color: var(--text-main);
+  word-break: break-all;
+}
+
+.vm-settings__toggle-row {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.vm-settings__toggle-row:last-child {
+  border-bottom: none;
+}
+
+.vm-settings__toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.vm-settings__toggle-text {
+  font-weight: 500;
+}
+
+.vm-toggle {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.vm-settings__danger {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+}
+
+.vm-settings__danger-title {
+  color: var(--danger);
+}
+
+.vm-settings__danger-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.vm-settings__danger-row:last-child {
+  border-bottom: none;
+}
