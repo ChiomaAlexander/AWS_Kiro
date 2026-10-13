@@ -3,6 +3,238 @@
  * Each exported function receives a container element and rebuilds it from scratch.
  */
 
+// ─────────────────────────────────────────────
+// Platform DOM helper utilities (FEAT-001)
+// ─────────────────────────────────────────────
+
+/**
+ * Create an HTMLElement with attributes and children in one call.
+ *
+ * Attribute mapping rules:
+ * - 'class'   → element.className
+ * - 'for'     → element.htmlFor
+ * - 'data-*'  → element.dataset[camelKey]
+ * - Functions → addEventListener(eventName, handler)
+ *               key must be 'on<Event>' (e.g. 'onClick' → 'click')
+ * - All other keys → element[key] = value
+ *
+ * Children may be:
+ * - HTMLElement (appended directly)
+ * - string (converted to a text node)
+ * - null / undefined (skipped)
+ *
+ * @param {string} tag - HTML tag name
+ * @param {object|null} [attrs={}] - Attributes / properties to set
+ * @param {...(HTMLElement|string|null|undefined)} children - Child nodes
+ * @returns {HTMLElement}
+ */
+export function el(tag, attrs, ...children) {
+  const element = document.createElement(tag);
+
+  if (attrs) {
+    for (const [key, value] of Object.entries(attrs)) {
+      if (value === null || value === undefined) continue;
+
+      if (key === 'class') {
+        element.className = value;
+      } else if (key === 'for') {
+        element.htmlFor = value;
+      } else if (key.startsWith('data-')) {
+        // Convert 'data-foo-bar' to 'fooBar' for dataset
+        const dataKey = key
+          .slice(5)
+          .replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+        element.dataset[dataKey] = value;
+      } else if (typeof value === 'function' && key.startsWith('on')) {
+        // 'onClick' → 'click', 'onChange' → 'change', etc.
+        const eventName = key.slice(2).toLowerCase();
+        element.addEventListener(eventName, value);
+      } else {
+        element[key] = value;
+      }
+    }
+  }
+
+  for (const child of children) {
+    if (child === null || child === undefined) continue;
+    if (child instanceof Node) {
+      element.appendChild(child);
+    } else {
+      element.appendChild(document.createTextNode(String(child)));
+    }
+  }
+
+  return element;
+}
+
+/**
+ * Create a DOM text node.
+ * Shorthand for document.createTextNode.
+ *
+ * @param {string} str
+ * @returns {Text}
+ */
+export function text(str) {
+  return document.createTextNode(String(str));
+}
+
+/**
+ * Create a badge span element.
+ * Used for skill tags, status labels, verification badges, etc.
+ *
+ * @param {string} label - Visible text inside the badge
+ * @param {string} [type='default'] - Semantic type used as data-type attribute
+ * @returns {HTMLSpanElement}
+ */
+export function badge(label, type = 'default') {
+  return el('span', { class: 'vm-badge', 'data-type': type }, label);
+}
+
+/**
+ * Wrap children inside a .vm-card div.
+ *
+ * @param {...(HTMLElement|string|null|undefined)} children
+ * @returns {HTMLDivElement}
+ */
+export function card(...children) {
+  return el('div', { class: 'vm-card' }, ...children);
+}
+
+/**
+ * Create an avatar element showing a user's initials (up to 2 letters).
+ * Falls back to a generic '?' if displayName is not available.
+ * If user.avatar is a URL string, renders an img instead of initials.
+ *
+ * @param {{ displayName?: string, avatar?: string|null, username?: string }} user
+ * @returns {HTMLDivElement}
+ */
+export function avatar(user) {
+  const name = (user && user.displayName) || (user && user.username) || '';
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .map(w => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || '?';
+
+  if (user && user.avatar) {
+    const img = el('img', {
+      class: 'vm-avatar vm-avatar--img',
+      src: user.avatar,
+      alt: `${name} avatar`,
+    });
+    return img;
+  }
+
+  return el(
+    'div',
+    {
+      class: 'vm-avatar',
+      'aria-label': `${name} avatar`,
+      role: 'img',
+    },
+    initials
+  );
+}
+
+/**
+ * Create an empty-state placeholder element.
+ * Used when a list or feed has no items to show.
+ *
+ * @param {string} icon - Emoji or icon character
+ * @param {string} title - Short heading text
+ * @param {string} body - Explanatory paragraph text
+ * @param {string|null} [actionLabel=null] - Label for an optional CTA button
+ * @param {Function|null} [actionFn=null] - Click handler for the CTA button
+ * @returns {HTMLDivElement}
+ */
+export function emptyState(icon, title, body, actionLabel = null, actionFn = null) {
+  const iconEl = el('div', { class: 'vm-empty__icon', 'aria-hidden': 'true' }, icon);
+  const titleEl = el('h3', { class: 'vm-empty__title' }, title);
+  const bodyEl = el('p', { class: 'vm-empty__body' }, body);
+
+  const children = [iconEl, titleEl, bodyEl];
+
+  if (actionLabel && typeof actionFn === 'function') {
+    const btn = el('button', {
+      class: 'btn btn-primary',
+      'aria-label': actionLabel,
+      onClick: actionFn,
+    }, actionLabel);
+    children.push(btn);
+  }
+
+  return el('div', { class: 'vm-empty' }, ...children);
+}
+
+/**
+ * Create a loading state element with an animated spinner indication.
+ *
+ * @returns {HTMLDivElement}
+ */
+export function loadingState() {
+  return el(
+    'div',
+    { class: 'vm-loading', role: 'status', 'aria-live': 'polite' },
+    el('span', { class: 'vm-loading__spinner', 'aria-hidden': 'true' }, '⏳'),
+    el('span', { class: 'vm-loading__text' }, 'Loading…')
+  );
+}
+
+/**
+ * Create an error state element.
+ *
+ * @param {string} msg - Error message to display
+ * @returns {HTMLDivElement}
+ */
+export function errorState(msg) {
+  return el(
+    'div',
+    { class: 'vm-error', role: 'alert', 'aria-live': 'assertive' },
+    el('span', { class: 'vm-error__icon', 'aria-hidden': 'true' }, '⚠️'),
+    el('span', { class: 'vm-error__msg' }, msg)
+  );
+}
+
+/**
+ * Create a coloured status badge for organisation / request verification status.
+ *
+ * Supported statuses: verified | pending | rejected | draft | more-info | suspended
+ *
+ * @param {string} status
+ * @returns {HTMLSpanElement}
+ */
+export function statusBadge(status) {
+  const labels = {
+    verified: '✅ Verified',
+    pending: '⏳ Pending',
+    rejected: '❌ Rejected',
+    draft: '📝 Draft',
+    'more-info': '❓ More Info Needed',
+    suspended: '🚫 Suspended',
+  };
+
+  const label = labels[status] || status;
+  return el('span', { class: `vm-status-badge status-${status}` }, label);
+}
+
+/**
+ * Create a clearly-labelled coming-soon placeholder for unbuilt features.
+ *
+ * @param {string} featureName - Human-readable name of the upcoming feature
+ * @returns {HTMLDivElement}
+ */
+export function comingSoon(featureName) {
+  return el(
+    'div',
+    { class: 'vm-coming-soon', role: 'status' },
+    el('span', { class: 'vm-coming-soon__icon', 'aria-hidden': 'true' }, '🚧'),
+    el('p', { class: 'vm-coming-soon__label' }, `${featureName} — Coming Soon`)
+  );
+}
+
 /**
  * Renders the volunteer roster into the given container.
  *
