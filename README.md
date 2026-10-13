@@ -1,127 +1,170 @@
 # VolunteerMatch 🤝
 
-A browser-based MVP that helps college-event organisers and nonprofit staff match volunteers to tasks. It runs entirely in the browser — no server, no cloud credentials required — and uses localStorage for persistence across page refreshes.
+A browser-based community platform for volunteer matching, organisation verification, resource donations, and blood-donation coordination. Built for the AWS Community Kiro AI-DLC challenge.
+
+Runs entirely in the browser — no server, no cloud credentials, no build step required.
 
 ---
 
-## Prerequisites
+## Quick Start
 
-| Tool | Required for |
-|------|-------------|
-| Any modern browser (Chrome, Firefox, Edge, Safari) | Running the app |
-| Node.js 18+ | Running the test suite |
-| VS Code Live Server extension _or_ `npx serve` | Serving the app locally |
+**Run the app (no Node needed):**
+- Right-click `index.html` in VS Code → **Open with Live Server**, or
+- Run: `python -m http.server 5500` then open `http://localhost:5500`
 
----
-
-## How to Run the App
-
-**Option A — VS Code Live Server (easiest):**
-1. Open the project folder in VS Code.
-2. Right-click `index.html` → **Open with Live Server**.
-
-**Option B — npx serve:**
-```bash
-npx serve .
+**Run tests:**
 ```
-Then open the URL printed in the terminal (usually `http://localhost:3000`).
-
-> The app does **not** need a server to work — you can open `index.html` directly in
-> Chrome or Edge by double-clicking it. Firefox may block ES Module imports from
-> `file://` URLs, so using a local server is recommended.
-
----
-
-## How to Run Tests
-
-```bash
-npm install        # installs Vitest and jsdom (one-time)
-npm test           # runs the full test suite once
+d:\chio_codes\node-portable\node-v20.18.0-win-x64\node.exe node_modules\vitest\vitest.mjs run
 ```
+Or if Node is in your PATH: `npm test`
 
-Expected output: all tests pass with 0 failures.
+Expected: **6 test files · 73 tests · 0 failures**
 
 ---
 
-## Scoring Algorithm
+## Demo Login
 
-Each volunteer is scored against a task using three components:
+Sign up as a new user, or log in with any sample account using password `demo`:
+
+| Username | Role | Notes |
+|----------|------|-------|
+| `admin` | Admin | Can approve/reject organisation verification |
+| `jordan_lee` | Volunteer | Has existing task assignments |
+| `amaka_obi` | Org rep | Owner of Bright Futures Orphanage (verified) |
+| `chris_wang` | Volunteer | Owner of Lagos Food Bank (pending verification) |
+| `sam_okafor` | Volunteer | Photographer / social media |
+
+---
+
+## Features
+
+### ✅ Implemented
+
+| Feature | Description |
+|---------|-------------|
+| **Dark UI** | Dusky charcoal/navy theme with violet/teal accents, design tokens throughout |
+| **Multi-view SPA** | Hash-based router, 10 views, persistent sidebar nav, mobile bottom bar |
+| **Authentication** | Sign up, log in (username or email), sessions, protected routes, onboarding |
+| **Community Feed** | Create posts, like/unlike, delete own posts, relative timestamps |
+| **Volunteer Opportunities** | Browse/filter, create, apply, accept/decline applicants, close |
+| **Volunteer Matching** | Deterministic scoring (+10/skill, +20/available, -5/workload), conflict/duplicate detection, unfilled-role warnings |
+| **Organisation Profiles** | Create, verification workflow (Draft→Pending→Verified/Rejected), admin approve/reject |
+| **Donations** | Resource requests (create, offer to help, progress tracking), fundraising demo tab |
+| **Blood Donation** | Donor opt-in, blood request submission, compatibility filter, privacy-safe contact |
+| **Persistence** | All state saved to `localStorage` (`volunteerMatch_v2`), restored on reload |
+| **Reset Demo** | Settings → Danger Zone → Reset Demo restores original sample data |
+
+### 🚧 Coming Soon (clearly labelled in UI)
+
+- Real Firebase backend (Auth + Firestore + Storage)
+- Payment processing (Stripe / Paystack integration)
+- File uploads for org verification documents
+- Email notifications
+- Post comments
+- Advanced admin panel with audit log
+
+---
+
+## Matching Algorithm
+
+Each volunteer is scored against an opportunity using three components:
 
 | Component | Points | Rule |
 |-----------|--------|------|
 | Skill match | +10 per skill | For each required skill the volunteer has |
 | Availability | +20 | If any of the volunteer's slots overlaps the task slot |
-| Workload penalty | −5 per assignment | For each task already assigned to the volunteer |
+| Workload penalty | −5 per assignment | For each task already assigned |
 
-**Total score = skill score + availability score + workload penalty**
+**Total = skill score + availability score + workload penalty**
 
-Ties are broken alphabetically by volunteer name (A → Z).
-
-Volunteers are flagged **ineligible** (Assign button disabled) when:
-- They are already assigned to this exact task (duplicate prevention).
-- They are already assigned to a different task whose time slot overlaps (conflict prevention).
+Ties broken alphabetically. Volunteers flagged ineligible (duplicate or conflict) have their Assign button disabled — the score is still shown for transparency.
 
 ---
 
-## How to Use the Demo
-
-1. **Load the page** — ten sample volunteers appear on the left with their skills and availability.
-2. **Enter a task** — fill in the name, description, required skills (checkboxes), time slot, and number of volunteers needed, then click **Find Volunteers**.
-3. **Read the ranked list** — every volunteer is scored and ranked. Green border = strong match; amber = partial; grey = weak; red = ineligible.
-4. **Check the explanation** — each card shows matched skills (✅), missing skills (❌), availability, workload, and a plain-English summary.
-5. **Assign a volunteer** — click **Assign** on any eligible card. The roster updates immediately and the results re-rank.
-6. **See unfilled roles** — if not enough eligible volunteers exist, an amber warning shows how many slots cannot be filled.
-7. **Reset the demo** — click **↺ Reset Demo** in the header to restore the original 10 volunteers and 3 tasks.
-8. **Refresh the page** — assignments are saved to localStorage and restored automatically.
-
----
-
-## AI Integration
-
-AI skill extraction is **disabled by default**. No API key is needed to run the app.
-
-To enable it at runtime (in the browser console):
-```js
-window.__AI_API_KEY = 'sk-...your-openai-key...';
-```
-Then reload the page. When active, an **Extract Skills from Description** button appears in the task form. It calls the OpenAI `gpt-4o-mini` model and pre-checks matching skill boxes. AI output is validated against the known skills list — tags not in the list are discarded. **AI never overrides the deterministic scoring algorithm.**
-
-See `DECISIONS.md` (ADR-006) for the full design rationale.
-
----
-
-## File Structure
+## Architecture
 
 ```
-volunteer-match/
-├── index.html              # App entry point — open this in a browser
-├── style.css               # All styles (CSS custom properties + component rules)
-├── package.json            # Node scripts + Vitest devDependencies
-├── vitest.config.js        # Vitest config (jsdom environment for localStorage)
-├── DECISIONS.md            # Architecture decision records
-├── README.md               # This file
-│
-├── src/
-│   ├── data.js             # SKILLS catalogue + getSampleVolunteers/getSampleTasks
-│   ├── matcher.js          # Pure scoring logic: slotOverlaps, scoreVolunteer, rankVolunteers
-│   ├── storage.js          # localStorage helpers: saveState, loadState, clearState
-│   ├── ai.js               # Optional OpenAI skill extractor (degrades gracefully)
-│   ├── ui.js               # DOM rendering: renderRoster, renderTaskForm, renderResults
-│   └── app.js              # Orchestrator: wires state, handlers, and rendering
-│
-└── tests/
-    ├── matcher.test.js     # Unit tests for all matcher functions
-    ├── storage.test.js     # Unit tests for localStorage helpers
-    └── scenarios.test.js   # Integration tests: unfilled roles, duplicates, conflicts
+index.html              ← Single HTML shell; #view-root swapped by router
+style.css               ← Full dark theme; CSS custom properties only
+
+src/
+  app.js                ← Bootstrap: init store → register routes → mount nav → start router
+  router.js             ← Hash router (register, navigate, :param extraction, auth guard)
+  store.js              ← AppStore singleton (get/set/patch/subscribe, localStorage-backed)
+  auth.js               ← Session helpers (signup, login, logout, requireAuth)
+  data.js               ← 12 users, 4 orgs, 8 posts, 5 opportunities, 4 donations, 4 donors, 3 requests
+  matcher.js            ← Pure scoring engine (unchanged from MVP)
+  storage.js            ← Low-level localStorage helpers
+  ai.js                 ← Optional AI skill extractor (disabled without API key)
+  ui.js                 ← Shared DOM helpers + original renderRoster/renderResults
+  components/
+    nav.js              ← Sidebar + mobile bottom bar
+    modal.js            ← Accessible dialog (focus trap, Escape key)
+    toast.js            ← Auto-dismissing notifications
+  views/
+    landing.js          ← Public landing page
+    auth.js             ← Sign up / log in
+    feed.js             ← Community feed
+    opportunities.js    ← Opportunity list + create
+    opportunity-detail.js ← Detail, apply, match, assign
+    profile.js          ← Individual profile + edit + onboarding
+    organisations.js    ← Org list, create, verification workflow
+    donations.js        ← Resource requests + fundraising (demo)
+    blood-donation.js   ← Donor opt-in, requests, compatibility, disclaimer
+    settings.js         ← Account settings, sign out, reset demo
+
+tests/
+  matcher.test.js       ← 21 tests (scoring, ranking, slot overlap)
+  scenarios.test.js     ← 4 tests (unfilled roles, duplicates, conflicts)
+  storage.test.js       ← 3 tests (localStorage round-trip)
+  store.test.js         ← 13 tests (get/set/patch/subscribe/persist/reset)
+  auth.test.js          ← 17 tests (signup, login, session, logout)
+  router.test.js        ← 15 tests (matching, params, auth guard, teardown)
 ```
 
 ---
 
-## Future Work
+## Firebase Migration Path
 
-- AI provider abstraction (Anthropic, AWS Bedrock, local LLM)
-- Skill taxonomy editor (add/remove skill tags)
-- Multi-organiser support with simple auth
-- Export assignments to CSV
-- Email confirmation hooks
-- Mobile-optimised layout
+The app is structured for a straightforward Firebase drop-in. See `DECISIONS.md` ADR-012 for the full migration steps:
+
+1. Add Firebase SDK via CDN `<script type="module">` import
+2. Replace `auth.signup/login/logout` with Firebase Auth methods
+3. Replace `vm_session` token with `onAuthStateChanged`
+4. Move store collections to Firestore with Security Rules
+5. Move file uploads to Firebase Storage with private access rules
+
+---
+
+## Design Tokens
+
+All colours defined as CSS custom properties on `:root` in `style.css`:
+
+```css
+--bg-main: #0B0D14       /* Main background */
+--bg-secondary: #111522  /* Sidebar, secondary surfaces */
+--bg-card: #171C2B       /* Cards */
+--accent: #8B7CFF        /* Primary accent (violet) */
+--accent-2: #42D6C5      /* Secondary accent (teal) */
+--text-main: #F3F4FA     /* Body text */
+--text-muted: #A3A9BB    /* Secondary text */
+```
+
+---
+
+## Safety Notes
+
+- **Blood donation**: Disclaimer shown on every render. Compatibility filter is for display only — medical confirmation required. Donor contact details are never exposed.
+- **Donations/Fundraising**: "Demo only — no real payments" banner is always visible on the fundraising tab.
+- **Organisation verification**: Status is read from the store, never from URL params or client-submitted values. Admin actions gated by `user.role === 'admin'` check.
+- **Passwords**: Stored as `DEMO_HASH_<username>` (demo only). See ADR-012 for Firebase Auth migration.
+
+---
+
+## Known Limitations
+
+- Single-user (no multi-user sync — localStorage is per browser)
+- Demo passwords are not cryptographically secure (by design, for this demo)
+- No file upload for org verification documents (coming soon)
+- Blood compatibility filter is simplified (O- universal donor simplified — real compatibility requires full crossmatch)
+- No real-time notifications (in-app notification objects stored but no push delivery)
