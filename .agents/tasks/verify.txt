@@ -1,0 +1,62 @@
+VolunteerMatch MVP – Test Verification
+=======================================
+Date: 2026-10-13
+Node.js: v20.18.0 (portable, d:\chio_codes\node-portable\node-v20.18.0-win-x64)
+Vitest: v1.6.1
+
+Test Run Output
+---------------
+ RUN  v1.6.1 D:/chio_codes/aws_challenge
+
+ ✓ tests/storage.test.js (3)
+ ✓ tests/scenarios.test.js (4)
+ ✓ tests/matcher.test.js (21)
+
+ Test Files  3 passed (3)
+      Tests  28 passed (28)
+   Start at  12:05:20
+   Duration  1.41s (transform 84ms, setup 1ms, collect 200ms, tests 36ms, environment 2.38s, prepare 650ms)
+
+Test Breakdown
+--------------
+tests/matcher.test.js    (21 tests):
+  - slotOverlaps (6):         overlapping, adjacent, contained, separate, identical, partial
+  - volunteerAvailableFor (2): true and false cases
+  - volunteerHasConflict (2):  no assignments, overlapping task
+  - scoreVolunteer (5):        max score, no skills, unavailable, workload penalty, explanation
+  - rankVolunteers (4):        score ordering, alphabetical tie-break, isDuplicate, hasConflict
+  - countUnfilledRoles (2):    all filled, some unfilled
+
+tests/storage.test.js    (3 tests):
+  - saveState + loadState round-trip
+  - clearState removes item
+  - loadState returns null when nothing stored
+
+tests/scenarios.test.js  (4 tests):
+  - unfilled roles (1): 5 needed, 2 eligible → 3 unfilled
+  - duplicate prevention (1): isDuplicate = true for re-assignment
+  - conflict prevention (2):  overlapping task → hasConflict true; non-overlapping → false
+
+Fix Applied
+-----------
+- src/matcher.js: workloadPenalty used `0 * -5 = -0` (JavaScript negative zero).
+  Fixed to `volunteer.assignments.length === 0 ? 0 : volunteer.assignments.length * -5`
+  so Object.is equality check in the test passes correctly.
+
+Files Created
+-------------
+package.json
+vitest.config.js
+.gitignore
+index.html
+style.css
+src/data.js
+src/matcher.js
+src/storage.js
+src/ai.js
+src/ui.js
+src/app.js
+tests/matcher.test.js
+tests/storage.test.js
+tests/scenarios.test.js
+README.md

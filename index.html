@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VolunteerMatch – Volunteer Task Matching</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>VolunteerMatch 🤝</h1>
+      <p class="app-subtitle">Community volunteer matching for events &amp; nonprofits</p>
+    </div>
+    <button id="reset-btn" class="btn btn-danger" aria-label="Reset demo to initial sample data">↺ Reset Demo</button>
+  </header>
+  <main>
+    <div id="app">
+      <section id="roster-panel" aria-label="Volunteer roster">
+        <h2 class="panel-title">👥 Volunteers</h2>
+        <div id="roster-list" role="list"></div>
+      </section>
+      <section id="task-panel" aria-label="Task management">
+        <div id="task-form-container"></div>
+        <div id="results-container"></div>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
