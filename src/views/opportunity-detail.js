@@ -229,9 +229,10 @@ function buildApplicationsSection(opp, users, currentUser, isCreator, onStatusCh
  * @param {object} opp - Current opportunity from store
  * @param {object[]} allOpps - All opportunities from store
  * @param {object[]} users - All users from store
+ * @param {Function} onAssign - Called with volunteer ID to assign them
  * @returns {HTMLElement}
  */
-function buildMatchingSection(opp, allOpps, users) {
+function buildMatchingSection(opp, allOpps, users, onAssign) {
   const heading = el('h2', { class: 'vm-section-heading' }, '🏆 Volunteer Matching');
 
   const apps = opp.applications || [];
@@ -268,9 +269,11 @@ function buildMatchingSection(opp, allOpps, users) {
   // Render results into a container div using renderResults from ui.js
   const resultsContainer = el('div', { class: 'vm-matching-results' });
 
-  // renderResults() requires an onAssign callback; we provide a no-op here
-  // since assignment is handled through the applications accept flow
-  renderResults(results, task, unfilledCount, () => {}, resultsContainer);
+  renderResults(results, task, unfilledCount, (volunteerId) => {
+    if (typeof onAssign === 'function') {
+      onAssign(volunteerId, 'accepted');
+    }
+  }, resultsContainer);
 
   return el('section', { 'aria-label': 'Volunteer Matching' }, heading, resultsContainer);
 }
@@ -505,10 +508,9 @@ export default async function renderOpportunityDetail(container, params) {
     container.appendChild(actionsCard);
 
     // ── Volunteer matching section (creator only, only if there are applicants) ──
-
     if (isCreator && (opp.applications || []).length > 0) {
       const allOpps = store.get('opportunities') || [];
-      const matchingSection = buildMatchingSection(opp, allOpps, users);
+      const matchingSection = buildMatchingSection(opp, allOpps, users, handleStatusChange);
       container.appendChild(card(matchingSection));
     }
   }

@@ -21,9 +21,29 @@ import {
   getSampleBloodDonors,
   getSampleBloodRequests,
 } from './data.js';
+import {
+  db,
+  saveDocumentToFirestore,
+  syncCollectionToFirestore,
+  fetchCollectionFromFirestore,
+  deleteDocumentFromFirestore,
+  subscribeToFirestoreCollection,
+} from './firebase.js';
 
 /** localStorage key for the platform store */
 const STORE_KEY = 'volunteerMatch_v2';
+
+/** Firestore-backed collection keys */
+const FIRESTORE_COLLECTIONS = [
+  'users',
+  'organisations',
+  'posts',
+  'opportunities',
+  'donationRequests',
+  'bloodDonors',
+  'bloodRequests',
+  'notifications',
+];
 
 /**
  * Shape of the initial application state.
@@ -45,7 +65,29 @@ function buildInitialState() {
 }
 
 /**
- * AppStore — localStorage-backed reactive state container.
+ * Merge remote Firestore documents into a local collection array by `id`.
+ * Remote documents override matching local documents, while preserving local-only seed items.
+ *
+ * @param {Array<object>} localItems
+ * @param {Array<object>} remoteItems
+ * @returns {Array<object>}
+ */
+function mergeCollectionsById(localItems = [], remoteItems = []) {
+  const map = new Map();
+  for (const item of localItems) {
+    if (item && item.id) map.set(item.id, item);
+  }
+  for (const rItem of remoteItems) {
+    if (rItem && rItem.id) {
+      const existing = map.get(rItem.id) || {};
+      map.set(rItem.id, Object.assign({}, existing, rItem));
+    }
+  }
+  return Array.from(map.values());
+}
+
+/**
+ * AppStore — localStorage + Cloud Firestore reactive state container.
  */
 class AppStore {
   constructor() {
@@ -57,6 +99,12 @@ class AppStore {
      * @type {Map<string, Set<Function>>}
      */
     this._listeners = new Map();
+
+    /** @type {Array<Function>} Active Firestore snapshot unsubscribers */
+    this._firestoreUnsubs = [];
+
+    /** Expose Firestore db instance */
+    this.db = db;
 
     this._load();
   }
@@ -121,20 +169,35 @@ class AppStore {
   }
 
   /**
-   * Set a top-level state key to a new value, persist, and notify subscribers.
+   * Set a top-level state key to a new value, persist to localStorage + Firestore,
+   * and notify subscribers.
    * @param {string} key
    * @param {*} value
    */
   set(key, value) {
+    const prevValue = this._state[key];
     this._state[key] = value;
     this._save();
     this._notify(key);
+
+    // Sync array collections to Cloud Firestore in the background
+    if (FIRESTORE_COLLECTIONS.includes(key) && Array.isArray(value)) {
+      if (Array.isArray(prevValue)) {
+        const newIds = new Set(value.filter(i => i && i.id).map(i => i.id));
+        prevValue.forEach(oldItem => {
+          if (oldItem && oldItem.id && !newIds.has(oldItem.id)) {
+            deleteDocumentFromFirestore(key, oldItem.id);
+          }
+        });
+      }
+      syncCollectionToFirestore(key, value);
+    }
   }
 
   /**
    * Partially update an item in an array collection by id.
    * Finds the item where item.id === id, merges delta using Object.assign,
-   * then persists and notifies subscribers of the collection key.
+   * then persists (localStorage + Firestore) and notifies subscribers.
    *
    * @param {string} collection - Top-level state key holding an array
    * @param {string} id - The item's id property value
@@ -155,6 +218,67 @@ class AppStore {
     this._state[collection] = newArr;
     this._save();
     this._notify(collection);
+
+    // Persist updated document to Cloud Firestore
+    if (FIRESTORE_COLLECTIONS.includes(collection)) {
+      saveDocumentToFirestore(collection, id, updated);
+    }
+  }
+
+  /**
+   * Hydrate in-memory and localStorage state from Cloud Firestore collections,
+   * and seed Firestore with initial collections if empty.
+   *
+   * @returns {Promise<void>}
+   */
+  async hydrateFromFirestore() {
+    for (const colName of FIRESTORE_COLLECTIONS) {
+      const remoteDocs = await fetchCollectionFromFirestore(colName);
+      if (remoteDocs === null) continue; // Offline or test env
+
+      const localDocs = this._state[colName] || [];
+      if (remoteDocs.length > 0) {
+        const merged = mergeCollectionsById(localDocs, remoteDocs);
+        this._state[colName] = merged;
+        this._save();
+        this._notify(colName);
+      } else if (localDocs.length > 0) {
+        // Seed Firestore with initial sample data when the remote collection is empty
+        await syncCollectionToFirestore(colName, localDocs);
+      }
+    }
+  }
+
+  /**
+   * Subscribe to real-time Cloud Firestore snapshots for all platform collections.
+   */
+  enableRealtimeSync() {
+    this.disableRealtimeSync();
+    for (const colName of FIRESTORE_COLLECTIONS) {
+      const unsub = subscribeToFirestoreCollection(colName, remoteDocs => {
+        if (!Array.isArray(remoteDocs) || remoteDocs.length === 0) return;
+        const localDocs = this._state[colName] || [];
+        const merged = mergeCollectionsById(localDocs, remoteDocs);
+        this._state[colName] = merged;
+        this._save();
+        this._notify(colName);
+      });
+      this._firestoreUnsubs.push(unsub);
+    }
+  }
+
+  /**
+   * Unsubscribe from active Firestore snapshot listeners.
+   */
+  disableRealtimeSync() {
+    this._firestoreUnsubs.forEach(unsub => {
+      try {
+        unsub();
+      } catch {
+        // Ignore
+      }
+    });
+    this._firestoreUnsubs = [];
   }
 
   /**

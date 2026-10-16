@@ -366,9 +366,10 @@ export default async function renderProfile(container, params) {
   const users = store.get('users') || [];
 
   // 'me' resolves to the logged-in user's username
-  const username = params.username === 'me'
+  const cleanUsername = (params.username || '').split('?')[0];
+  const username = cleanUsername === 'me'
     ? currentUser?.username
-    : params.username;
+    : cleanUsername;
 
   let user = users.find(u => u.username === username);
 

@@ -20,6 +20,16 @@
  */
 
 import { store } from './store.js';
+import {
+  firebaseAuth,
+  registerWithFirebase,
+  loginWithFirebase as firebaseSignIn,
+  signInWithGoogleFirebase,
+  logoutFromFirebase,
+  onFirebaseAuthChange,
+  saveDocumentToFirestore,
+  getDocumentFromFirestore,
+} from './firebase.js';
 
 /** localStorage key for the active session */
 const SESSION_KEY = 'vm_session';
@@ -36,9 +46,14 @@ function makeDemoToken(userId) {
 /**
  * Writes a session record to localStorage.
  * @param {string} userId
+ * @param {string} [token]
  */
-function writeSession(userId) {
-  const session = { userId, token: makeDemoToken(userId), expiresAt: null };
+function writeSession(userId, token) {
+  const session = {
+    userId,
+    token: token || makeDemoToken(userId),
+    expiresAt: null,
+  };
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
 
@@ -56,12 +71,76 @@ function readSession() {
 }
 
 /**
- * auth — Authentication helpers object (not a class, not a singleton class;
- * just a plain object with methods that close over imported singletons).
+ * Ensure a Firebase-authenticated user exists in the local store and Firestore.
+ * @param {object} fbUser - Firebase Auth User object
+ * @returns {Promise<object>} Local user object
+ */
+async function syncFirebaseUserToStore(fbUser) {
+  const users = store.get('users') || [];
+  const lowerEmail = (fbUser.email || '').toLowerCase();
+
+  let user = users.find(
+    u =>
+      u.firebaseUid === fbUser.uid ||
+      u.id === fbUser.uid ||
+      (lowerEmail && u.email?.toLowerCase() === lowerEmail)
+  );
+
+  if (!user) {
+    // Try fetching from Firestore users collection first
+    const remoteUser = await getDocumentFromFirestore('users', fbUser.uid);
+    if (remoteUser) {
+      user = remoteUser;
+    } else {
+      const baseUsername = (
+        fbUser.email ? fbUser.email.split('@')[0] : `user_${fbUser.uid.slice(0, 6)}`
+      )
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, '_')
+        .slice(0, 20);
+
+      user = {
+        id: fbUser.uid,
+        firebaseUid: fbUser.uid,
+        username: baseUsername || `user_${Date.now()}`,
+        email: lowerEmail,
+        passwordHash: `DEMO_HASH_${baseUsername}`,
+        displayName: fbUser.displayName || baseUsername || 'Volunteer',
+        bio: '',
+        avatar: fbUser.photoURL || null,
+        location: '',
+        skills: [],
+        languages: [],
+        availability: [],
+        interests: [],
+        role: 'user',
+        bloodDonor: false,
+        createdAt: new Date().toISOString(),
+        onboarded: false,
+      };
+      await saveDocumentToFirestore('users', user.id, user);
+    }
+    const latestUsers = store.get('users') || [];
+    if (!latestUsers.some(u => u.id === user.id)) {
+      store.set('users', [...latestUsers, user]);
+    }
+  } else if (!user.firebaseUid) {
+    store.patch('users', user.id, { firebaseUid: fbUser.uid });
+  }
+
+  return user;
+}
+
+/**
+ * auth — Authentication helpers object (supports both synchronous local/demo auth
+ * and Firebase Authentication + Firestore profile persistence).
  */
 export const auth = {
+  /** Reference to the underlying Firebase Auth instance */
+  firebaseAuth,
+
   /**
-   * Create a new user account and start a session.
+   * Create a new user account, start a session, and register with Firebase Auth + Firestore.
    *
    * Validates:
    * - username is not already taken
@@ -99,7 +178,7 @@ export const auth = {
       id: `u_${Date.now()}`,
       username: lowerUsername,
       email: lowerEmail,
-      // Demo-only password storage — not for production
+      // Demo-only password storage — stripped before saving to Firestore
       passwordHash: `DEMO_HASH_${lowerUsername}`,
       displayName,
       bio: '',
@@ -115,11 +194,23 @@ export const auth = {
       onboarded: false,
     };
 
-    // Persist to store
+    // Persist to store (also syncs to Firestore via store.set)
     store.set('users', [...users, newUser]);
 
     // Start session
     writeSession(newUser.id);
+
+    // Register with Firebase Authentication & save profile in Firestore in background
+    registerWithFirebase({
+      email: lowerEmail,
+      password,
+      displayName,
+      userProfile: newUser,
+    }).then(res => {
+      if (res && res.ok && res.uid) {
+        store.patch('users', newUser.id, { firebaseUid: res.uid });
+      }
+    });
 
     return { ok: true, user: newUser };
   },
@@ -127,7 +218,7 @@ export const auth = {
   /**
    * Log in with a username or email plus a password.
    * Accepts password === 'demo' as a convenience shortcut for any user.
-   * Also accepts the exact hash string (DEMO_HASH_<username>).
+   * Also accepts the exact hash string (DEMO_HASH_<username>) and syncs with Firebase Auth.
    *
    * @param {{ identifier: string, password: string }} params
    *   identifier may be either a username or an email address
@@ -161,14 +252,92 @@ export const auth = {
     // Start session
     writeSession(user.id);
 
+    // If logging in with a non-demo password and user has an email, sign in to Firebase Auth
+    if (password !== 'demo' && user.email) {
+      firebaseSignIn({ email: user.email, password }).catch(() => {});
+    }
+
     return { ok: true, user };
   },
 
   /**
-   * End the current session by removing the session record from localStorage.
+   * Authenticate via Firebase Authentication (Email/Password) with fallback to local demo auth.
+   * Allows users created in Firebase Auth on any device to sign in.
+   *
+   * @param {{ identifier: string, password: string }} params
+   * @returns {Promise<{ ok: true, user: object }|{ ok: false, error: string }>}
+   */
+  async loginWithFirebase({ identifier, password }) {
+    // First check local/demo login (handles 'demo' password and local accounts immediately)
+    const localResult = this.login({ identifier, password });
+    if (localResult.ok) {
+      return localResult;
+    }
+
+    if (!identifier || !password) {
+      return { ok: false, error: 'Username/email and password are required.' };
+    }
+
+    // Resolve identifier to an email if it matches a known username
+    const users = store.get('users') || [];
+    const lower = identifier.toLowerCase();
+    const matchedUser = users.find(
+      u => u.username.toLowerCase() === lower || u.email.toLowerCase() === lower
+    );
+    const emailToTry = matchedUser ? matchedUser.email : identifier;
+
+    if (!emailToTry.includes('@')) {
+      return localResult;
+    }
+
+    const fbRes = await firebaseSignIn({ email: emailToTry, password });
+    if (!fbRes.ok || !fbRes.firebaseUser) {
+      return { ok: false, error: 'Invalid username or password.' };
+    }
+
+    const syncedUser = await syncFirebaseUserToStore(fbRes.firebaseUser);
+    writeSession(syncedUser.id, fbRes.firebaseUser.uid);
+    return { ok: true, user: syncedUser };
+  },
+
+  /**
+   * Sign in with Google using Firebase Authentication and sync profile to Firestore + store.
+   *
+   * @returns {Promise<{ ok: true, user: object }|{ ok: false, error: string }>}
+   */
+  async loginWithGoogle() {
+    const res = await signInWithGoogleFirebase();
+    if (!res.ok || !res.firebaseUser) {
+      return { ok: false, error: res.error || 'Google sign-in failed.' };
+    }
+
+    const user = await syncFirebaseUserToStore(res.firebaseUser);
+    writeSession(user.id, res.firebaseUser.uid);
+    return { ok: true, user };
+  },
+
+  /**
+   * Subscribe to Firebase Auth state changes and keep local session in sync.
+   * @returns {Function} Unsubscribe function
+   */
+  initAuthListener() {
+    return onFirebaseAuthChange(async fbUser => {
+      if (fbUser) {
+        const user = await syncFirebaseUserToStore(fbUser);
+        if (!readSession()) {
+          writeSession(user.id, fbUser.uid);
+        }
+      }
+    });
+  },
+
+  /**
+   * End the current session by removing the session record from localStorage
+   * and signing out of Firebase Auth.
    */
   logout() {
     localStorage.removeItem(SESSION_KEY);
+    logoutFromFirebase();
   },
 
   /**

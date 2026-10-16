@@ -38,6 +38,7 @@ export default async function renderLanding(container, _params) {
 
   if (loggedIn) {
     const feedBtn = el('button', {
+      type: 'button',
       class: 'btn btn-primary',
       'aria-label': 'Go to your community feed',
       onClick: () => router.navigate('/feed'),
@@ -45,18 +46,31 @@ export default async function renderLanding(container, _params) {
     ctaButtons.push(feedBtn);
   } else {
     const loginBtn = el('button', {
+      type: 'button',
       class: 'btn btn-primary',
       'aria-label': 'Log in to VolunteerMatch',
       onClick: () => router.navigate('/auth?mode=login'),
     }, 'Log In');
 
     const signupBtn = el('button', {
+      type: 'button',
       class: 'btn btn-secondary',
       'aria-label': 'Sign up for VolunteerMatch',
       onClick: () => router.navigate('/auth?mode=signup'),
     }, 'Sign Up');
 
-    ctaButtons.push(loginBtn, signupBtn);
+    const demoBtn = el('button', {
+      type: 'button',
+      class: 'btn btn-ghost',
+      style: 'border:1px solid var(--border);cursor:pointer;',
+      'aria-label': 'Instant demo login as volunteer',
+      onClick: () => {
+        auth.login({ identifier: 'jordan_lee', password: 'demo' });
+        router.navigate('/feed');
+      },
+    }, '⚡ One-Click Demo');
+
+    ctaButtons.push(loginBtn, signupBtn, demoBtn);
   }
 
   // ── Feature columns ───────────────────────────────────────────────────────
@@ -64,27 +78,41 @@ export default async function renderLanding(container, _params) {
     {
       icon: '🙋',
       title: 'Volunteer',
+      route: '/opportunities',
       body: 'Browse open opportunities, apply your skills, and track your community impact over time.',
     },
     {
       icon: '🏢',
       title: 'Organise',
+      route: '/organisations',
       body: 'Create events, recruit volunteers, and manage your community group or verified organisation.',
     },
     {
       icon: '🎁',
       title: 'Donate',
+      route: '/donations',
       body: 'Contribute resources, essential supplies, or financial support to legitimate campaigns.',
     },
     {
       icon: '🩸',
       title: 'Blood Donation',
+      route: '/blood-donation',
       body: 'Connect blood donors with urgent requests in a privacy-conscious, verified workflow.',
     },
   ];
 
   const featureCols = features.map(f =>
-    el('div', { class: 'vm-feature-card' },
+    el('div', {
+      class: 'vm-feature-card',
+      style: 'cursor:pointer;',
+      onClick: () => {
+        if (!auth.currentUser()) {
+          router.navigate('/auth?mode=login');
+        } else {
+          router.navigate(f.route);
+        }
+      },
+    },
       el('div', { class: 'vm-feature-icon', 'aria-hidden': 'true' }, f.icon),
       el('h3', { class: 'vm-feature-title' }, f.title),
       el('p',  { class: 'vm-feature-body'  }, f.body),

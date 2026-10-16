@@ -206,7 +206,7 @@ describe('router — auth guard', () => {
     expect(window.location.hash).toBe('#/landing');
   });
 
-  it('allows unauthenticated access to /auth', async () => {
+  it('allows unauthenticated access to /auth with query params', async () => {
     const { router } = await import('../src/router.js');
     ensureViewRoot();
 
@@ -215,10 +215,12 @@ describe('router — auth guard', () => {
     const authFn = vi.fn();
     router.register('/auth', authFn);
 
-    window.location.hash = '#/auth';
+    window.location.hash = '#/auth?mode=signup';
     router._handleRoute();
 
     expect(authFn).toHaveBeenCalled();
+    expect(router.current()?.path).toBe('/auth');
+    expect(router.current()?.query?.get('mode')).toBe('signup');
   });
 });
 

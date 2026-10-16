@@ -92,11 +92,49 @@ function buildLoginForm(formWrap, submitBtn, globalErrorEl) {
   formWrap.appendChild(el('div', { class: 'form-group' }, idLabel, idInput, idErr));
   formWrap.appendChild(el('div', { class: 'form-group' }, pwLabel, pwInput, pwErr));
 
-  // Hint
+  // Hint & quick demo logins
   const hint = el('p', { class: 'vm-auth__hint' },
     'Demo: use any username with password ', el('code', {}, 'demo')
   );
   formWrap.appendChild(hint);
+
+  const demoAccounts = [
+    { label: 'Admin', user: 'admin' },
+    { label: 'Volunteer (Jordan)', user: 'jordan_lee' },
+    { label: 'Org Rep (Amaka)', user: 'amaka_obi' },
+  ];
+  const quickFillRow = el('div', { class: 'vm-auth__quick-fill', style: 'display:flex;gap:0.4rem;flex-wrap:wrap;margin:0.5rem 0 0.75rem;' },
+    el('span', { class: 'vm-text-muted vm-text-small', style: 'width:100%;font-size:0.8rem;' }, 'Quick Demo Logins:'),
+    ...demoAccounts.map(acc => el('button', {
+      type: 'button',
+      class: 'btn btn-secondary',
+      style: 'font-size:0.75rem;padding:0.3rem 0.6rem;cursor:pointer;',
+      'aria-label': `Quick login as ${acc.label}`,
+      onClick: () => {
+        idInput.value = acc.user;
+        pwInput.value = 'demo';
+        if (submitBtn.onclick) submitBtn.onclick();
+      }
+    }, `⚡ ${acc.label}`))
+  );
+  formWrap.appendChild(quickFillRow);
+
+  const googleBtn = el('button', {
+    type: 'button',
+    class: 'btn btn-secondary',
+    style: 'width:100%;margin-bottom:0.5rem;',
+    'aria-label': 'Continue with Google via Firebase Auth',
+    onClick: async () => {
+      setError(globalErrorEl, '');
+      const res = await auth.loginWithGoogle();
+      if (res.ok) {
+        router.navigate('/feed');
+      } else {
+        setError(globalErrorEl, res.error || 'Google sign-in failed.');
+      }
+    },
+  }, '🔐 Continue with Google');
+  formWrap.appendChild(googleBtn);
 
   // Submit handler
   submitBtn.textContent = 'Log In';
@@ -116,6 +154,14 @@ function buildLoginForm(formWrap, submitBtn, globalErrorEl) {
     const result = auth.login({ identifier, password });
     if (result.ok) {
       router.navigate('/feed');
+    } else if (identifier.includes('@') && password !== 'demo') {
+      auth.loginWithFirebase({ identifier, password }).then(fbResult => {
+        if (fbResult.ok) {
+          router.navigate('/feed');
+        } else {
+          setError(globalErrorEl, fbResult.error || result.error);
+        }
+      });
     } else {
       setError(globalErrorEl, result.error);
     }
@@ -152,6 +198,26 @@ function buildSignupForm(formWrap, submitBtn, globalErrorEl) {
   formWrap.appendChild(mailF.group);
   formWrap.appendChild(pw1F.group);
   formWrap.appendChild(pw2F.group);
+
+  const demoAccounts = [
+    { label: 'Admin', user: 'admin' },
+    { label: 'Volunteer (Jordan)', user: 'jordan_lee' },
+    { label: 'Org Rep (Amaka)', user: 'amaka_obi' },
+  ];
+  const quickFillRow = el('div', { class: 'vm-auth__quick-fill', style: 'display:flex;gap:0.4rem;flex-wrap:wrap;margin:0.5rem 0 0.75rem;' },
+    el('span', { class: 'vm-text-muted vm-text-small', style: 'width:100%;font-size:0.8rem;' }, 'Or instant demo login:'),
+    ...demoAccounts.map(acc => el('button', {
+      type: 'button',
+      class: 'btn btn-secondary',
+      style: 'font-size:0.75rem;padding:0.3rem 0.6rem;cursor:pointer;',
+      'aria-label': `Quick login as ${acc.label}`,
+      onClick: () => {
+        auth.login({ identifier: acc.user, password: 'demo' });
+        router.navigate('/feed');
+      }
+    }, `⚡ ${acc.label}`))
+  );
+  formWrap.appendChild(quickFillRow);
 
   // Submit handler
   submitBtn.textContent = 'Create Account';

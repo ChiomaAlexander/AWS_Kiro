@@ -14,6 +14,7 @@
 
 import { auth } from '../auth.js';
 import { router } from '../router.js';
+import { showToast } from './toast.js';
 
 /** Primary nav items shown in sidebar and bottom bar. */
 const NAV_ITEMS = [
@@ -87,7 +88,14 @@ function buildNavItem(item, isActive) {
   btn.appendChild(iconSpan);
   btn.appendChild(labelSpan);
 
-  btn.addEventListener('click', () => router.navigate(item.route));
+  btn.addEventListener('click', () => {
+    if (!auth.currentUser()) {
+      showToast(`Please sign in to access ${item.label}`, 'info');
+      router.navigate('/auth?mode=login');
+      return;
+    }
+    router.navigate(item.route);
+  });
   return btn;
 }
 
@@ -104,18 +112,31 @@ function buildNavItem(item, isActive) {
 export default function mountNav(sidebarEl, bottomBarEl) {
   if (!sidebarEl) return () => {};
 
+  function updateLayout() {
+    const isAuthed = Boolean(auth.currentUser());
+    const layout = document.querySelector('.vm-layout');
+    if (layout) {
+      layout.classList.toggle('no-sidebar', !isAuthed);
+    }
+  }
+
   /**
    * Build or rebuild the sidebar contents.
    */
   function renderSidebar() {
+    updateLayout();
     sidebarEl.innerHTML = '';
 
     // ── Logo ────────────────────────────────────────────────
     const logo = document.createElement('a');
     logo.className = 'vm-nav-logo';
-    logo.href = '#/feed';
-    logo.setAttribute('aria-label', 'VolunteerMatch — go to home feed');
+    logo.href = auth.currentUser() ? '#/feed' : '#/landing';
+    logo.setAttribute('aria-label', 'VolunteerMatch — home');
     logo.innerHTML = '<span aria-hidden="true">🤝</span> VolunteerMatch';
+    logo.addEventListener('click', (e) => {
+      e.preventDefault();
+      router.navigate(auth.currentUser() ? '/feed' : '/landing');
+    });
     sidebarEl.appendChild(logo);
 
     // ── Nav items ────────────────────────────────────────────
@@ -178,7 +199,7 @@ export default function mountNav(sidebarEl, bottomBarEl) {
       const prompt = document.createElement('div');
       prompt.className = 'vm-nav-signin-prompt';
       prompt.innerHTML =
-        '<a href="#/auth" aria-label="Sign in to VolunteerMatch">Sign in to see more →</a>';
+        '<a href="#/auth?mode=login" aria-label="Sign in to VolunteerMatch">Sign in to see more →</a>';
       sidebarEl.appendChild(prompt);
     }
   }

@@ -19,7 +19,7 @@
  */
 
 /** Routes that do not require authentication */
-const PUBLIC_ROUTES = new Set(['/landing', '/auth']);
+const PUBLIC_ROUTES = new Set(['/', '/landing', '/auth']);
 
 /**
  * Try to match a URL path against a registered route pattern.
@@ -51,17 +51,35 @@ function matchRoute(pattern, urlPath) {
 
 /**
  * Parse the current window.location.hash into a clean path string.
+ * Strips query parameters so '#/auth?mode=login' becomes '/auth'.
  * '#/feed' → '/feed'   |   '' or '#' → '/'
  *
  * @returns {string}
  */
 function currentHashPath() {
   const hash = window.location.hash;
-  if (!hash || hash === '#') return '/';
+  if (!hash || hash === '#' || hash === '#/') return '/';
   // Strip leading '#'
-  const path = hash.slice(1);
-  // Ensure leading slash
+  let path = hash.slice(1);
+  // Strip query string (e.g. '/auth?mode=login' -> '/auth')
+  path = path.split('?')[0];
+  // If path is empty, return root
+  if (!path || path === '/') return '/';
+  // Ensure leading slash (e.g. 'landing' -> '/landing')
   return path.startsWith('/') ? path : `/${path}`;
+}
+
+/**
+ * Parse query parameters from the current window.location.hash.
+ * e.g. '#/auth?mode=login' → URLSearchParams { mode: 'login' }
+ *
+ * @returns {URLSearchParams}
+ */
+function currentHashQuery() {
+  const hash = window.location.hash || '';
+  const qIdx = hash.indexOf('?');
+  if (qIdx === -1) return new URLSearchParams();
+  return new URLSearchParams(hash.slice(qIdx + 1));
 }
 
 /**
@@ -105,17 +123,23 @@ class Router {
   /**
    * Navigate to a path by updating window.location.hash.
    * Triggers a hashchange event which start() is already listening to.
+   * If the target hash is already active, forces _handleRoute() directly.
    *
    * @param {string} path - e.g. '/feed' or '/opportunities/opp1'
    */
   navigate(path) {
-    window.location.hash = `#${path}`;
+    const targetHash = path.startsWith('#') ? path : `#${path}`;
+    if (window.location.hash === targetHash) {
+      this._handleRoute();
+    } else {
+      window.location.hash = targetHash;
+    }
   }
 
   /**
-   * Return the current route info ({ path, params }), or null before start().
+   * Return the current route info ({ path, params, query }), or null before start().
    *
-   * @returns {{ path: string, params: object }|null}
+   * @returns {{ path: string, params: object, query: URLSearchParams }|null}
    */
   current() {
     return this._current;
@@ -158,6 +182,14 @@ class Router {
   _handleRoute() {
     const path = currentHashPath();
 
+    // If on root '/', if authed go to /feed. If NOT authed, stay on '/' (renders landing page without redirect!)
+    if (path === '/') {
+      if (this._isAuthed()) {
+        this.navigate('/feed');
+        return;
+      }
+    }
+
     // Auth guard — protect all routes except public ones
     if (!PUBLIC_ROUTES.has(path) && !this._isAuthed()) {
       // Redirect without adding a history entry for the guarded path
@@ -198,7 +230,7 @@ class Router {
     const container = document.getElementById('view-root');
     if (!container) return;
 
-    this._current = { path, params: matchedParams };
+    this._current = { path, params: matchedParams, query: currentHashQuery() };
 
     // Render — may be async; we handle the teardown either way
     const result = matchedRoute.renderFn(container, matchedParams);

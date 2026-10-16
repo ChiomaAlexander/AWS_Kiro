@@ -85,11 +85,12 @@ export default async function renderSettings(container, _params) {
   if (user) {
     const accountCard = el('div', { class: 'vm-card vm-settings__section' },
       el('h2', { class: 'vm-settings__section-title' }, 'Account'),
-      el('p', { class: 'vm-text-muted vm-text-small' }, 'Demo — changes are not sent to any server.'),
+      el('p', { class: 'vm-text-muted vm-text-small' }, 'Synced with Firebase Auth & Cloud Firestore (aws-kiro).'),
       infoRow('Display Name', user.displayName),
       infoRow('Username',     `@${user.username}`),
       infoRow('Email',        user.email),
       infoRow('Role',         user.role || 'user'),
+      infoRow('Firebase Project', 'aws-kiro'),
     );
     wrap.appendChild(accountCard);
 

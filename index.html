@@ -4,15 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VolunteerMatch</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤝</text></svg>">
+  <link rel="stylesheet" href="style.css?v=2.3">
+  <script type="importmap">
+    {
+      "imports": {
+        "firebase/app": "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js",
+        "firebase/analytics": "https://www.gstatic.com/firebasejs/11.0.2/firebase-analytics.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js"
+      }
+    }
+  </script>
 </head>
 <body>
-  <div class="vm-layout">
+  <div class="vm-layout no-sidebar">
     <aside id="sidebar"></aside>
     <main id="main-content">
       <div id="view-root"></div>
     </main>
   </div>
-  <script type="module" src="src/app.js"></script>
+  <script type="module" src="src/app.js?v=2.4"></script>
 </body>
 </html>

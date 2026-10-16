@@ -39,18 +39,31 @@ export function el(tag, attrs, ...children) {
         element.className = value;
       } else if (key === 'for') {
         element.htmlFor = value;
+        element.setAttribute('for', String(value));
       } else if (key.startsWith('data-')) {
         // Convert 'data-foo-bar' to 'fooBar' for dataset
         const dataKey = key
           .slice(5)
           .replace(/-([a-z])/g, (_, c) => c.toUpperCase());
         element.dataset[dataKey] = value;
+        element.setAttribute(key, String(value));
       } else if (typeof value === 'function' && key.startsWith('on')) {
         // 'onClick' → 'click', 'onChange' → 'change', etc.
         const eventName = key.slice(2).toLowerCase();
         element.addEventListener(eventName, value);
+      } else if (key === 'style' && typeof value === 'string') {
+        element.style.cssText = value;
       } else {
-        element[key] = value;
+        if (key in element && typeof value !== 'object') {
+          try {
+            element[key] = value;
+          } catch (_) {}
+        }
+        try {
+          if (typeof value !== 'object' && typeof value !== 'function') {
+            element.setAttribute(key, String(value));
+          }
+        } catch (_) {}
       }
     }
   }

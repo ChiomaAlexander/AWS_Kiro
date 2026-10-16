@@ -76,11 +76,30 @@ a:hover {
 
 /* ── Layout ─────────────────────────────────────────────────── */
 
-/* Outer grid: sidebar | main */
+/* Layout container */
 .vm-layout {
-  display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
+  display: block;
   min-height: 100vh;
+  width: 100%;
+}
+
+/* Full-width layout when unauthenticated (landing/auth) */
+.vm-layout.no-sidebar #sidebar,
+.vm-layout.no-sidebar .vm-sidebar {
+  display: none !important;
+}
+
+.vm-layout.no-sidebar #main-content,
+.vm-layout.no-sidebar .vm-main {
+  margin-left: 0 !important;
+  width: 100% !important;
+  padding-bottom: 0 !important;
+}
+
+.vm-layout.no-sidebar #bottom-bar,
+.vm-layout.no-sidebar .vm-bottom-bar,
+body:has(.vm-layout.no-sidebar) #bottom-bar {
+  display: none !important;
 }
 
 /* Sidebar */
@@ -103,10 +122,10 @@ a:hover {
 .vm-main,
 #main-content {
   margin-left: var(--sidebar-width);
-  flex: 1;
-  overflow-y: auto;
+  width: calc(100% - var(--sidebar-width));
   min-height: 100vh;
   background: var(--bg-main);
+  overflow-y: auto;
 }
 
 /* View container */
@@ -345,6 +364,19 @@ a:hover {
 .btn-danger:hover,
 .vm-btn-danger:hover {
   background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.btn-ghost,
+.vm-btn-ghost {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.btn-ghost:hover,
+.vm-btn-ghost:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--text-main);
 }
 
 .btn:focus,
@@ -866,17 +898,18 @@ a:hover {
   /* Hide sidebar on mobile */
   .vm-sidebar,
   #sidebar {
-    display: none;
+    display: none !important;
   }
 
   /* Main fills full width */
   .vm-layout {
-    grid-template-columns: 1fr;
+    display: block;
   }
 
   .vm-main,
   #main-content {
-    margin-left: 0;
+    margin-left: 0 !important;
+    width: 100% !important;
     padding-bottom: 4.5rem; /* room for bottom bar */
   }
 

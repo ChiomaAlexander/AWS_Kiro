@@ -12,6 +12,7 @@
  * @module app
  */
 
+import './firebase.js';
 import { store } from './store.js';
 import { auth } from './auth.js';
 import { router } from './router.js';
@@ -34,6 +35,7 @@ import renderSettings         from './views/settings.js';
  * Order matters: more specific patterns before wildcards.
  */
 function registerRoutes() {
+  router.register('/',                  renderLanding);
   router.register('/landing',           renderLanding);
   router.register('/auth',              renderAuth);
   router.register('/feed',              renderFeed);
@@ -69,8 +71,11 @@ function ensureBottomBar() {
  * Bootstrap function — called once the DOM is ready.
  */
 function initApp() {
-  // The store self-initialises in its constructor (loads from localStorage
-  // or seeds from sample data). No explicit seeding needed here.
+  // Subscribe to Firebase Auth state changes and hydrate collections from Firestore.
+  auth.initAuthListener();
+  store.hydrateFromFirestore().then(() => {
+    store.enableRealtimeSync();
+  });
 
   // Register all routes before starting the router.
   registerRoutes();
@@ -87,4 +92,8 @@ function initApp() {
   router.start();
 }
 
-document.addEventListener('DOMContentLoaded', initApp);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
